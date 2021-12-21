@@ -8,7 +8,7 @@ from natsort import natsorted             # To easily resort file order
 from datetime import datetime             # For easily parsing timestamps
 import warnings
 warnings.filterwarnings("ignore")         # Attempt to remove some unnecessary pyplot warnings
-from scipy.interpolate import interp1d
+
 
 def get_filepaths(folder):
     # Automatically get all filepaths in example folder in a sorted list
@@ -130,6 +130,17 @@ def open_image(im, k_open = 9):
     opening = cv2.morphologyEx(im,cv2.MORPH_OPEN,kernel)
     return opening
 
+def close_image(im, k_close=9):
+    """
+    Closes image, dilating and then eroding the image.
+    @param im a 2D array, preferably of float32 values
+    @param k_open the kernel size
+    @return opening, the opened image 2D array of float32 values
+    """
+    kernel = np.ones((k_close,k_close),np.uint8)
+    opening = cv2.morphologyEx(im,cv2.MORPH_CLOSE,kernel)
+    return opening
+
 def sobel_2D(im, k_sobel = 15):
     """
     Applies a sobel filter over each of the axes of a 2D array before summing result in each direction for each pixel to produce an image which has a stronger signal for gradient changes. 
@@ -144,24 +155,29 @@ def sobel_2D(im, k_sobel = 15):
     sobel = sobel/np.max(sobel)
     return sobel
 
-def threshold_image(im):
+def threshold_image(im, minimum_rel_val=0.2):
     """
-    
+    Makes an image binary by making each pixel over a fraction of the maximum value present 1. 
+    @param im a 2D array, preferably of float 32 values
+    @param minimum_rel_val the proportion of the maximum value taken as the threshold value for polarisation
+    @return thresh the 2D image array of uint8 values, all ones and zeros
     """
     # just takes data above threshold value and makes binary it seems
     # Filters out some of the background murk
-    thresh = cv2.threshold(im, np.max(im)/5, 1, cv2.THRESH_BINARY)[1].astype(np.uint8) # data type change again is preferred by cv2 for this bit for whatever reason.
+    thresh = cv2.threshold(im, np.max(im)*minimum_rel_val, 1, cv2.THRESH_BINARY)[1].astype(np.uint8) # data type change again is preferred by cv2 for this bit for whatever reason.
     return thresh
 
 def get_contours(binary):
     """ 
-    Given a binary image, returns contours 
-    Contours must be above an area/perimeter threshold
+    Given a binary image, returns contours. Contours must be above an area/perimeter threshold.
+    @param binary a 2D array image, preferably a binary image of 1s and 0s
+    @return big_cnt a list of contours that are large enough
+    @return areas the calculated areas of said contours
+    @return perims the calculated perimeters of said contours
     """
+    # Error handling statements are to attempt to account for differences in cv2 versions on some pcs.
     try:
         contours, hierarchy = cv2.findContours(binary,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-    
-    # need to ask George what going on with this next bit. Apparently was for messing around with different versions.
     except:
         try:
             _,contours, _ = cv2.findContours(binary,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
@@ -182,3 +198,33 @@ def get_contours(binary):
 #             big_cnt.append(c)
 
     return big_cnt, areas, perims
+
+def get_contour_data(binimgs):
+    """
+    Basically get_contours but for a series of binary images and returns data in sub-arrays for each image.
+    """
+    contour_sets = []
+    area_sets = []
+    perim_sets = []
+    for binimg in binimgs:
+        contours, areas, perims = get_contours(binimg)
+        contour_sets.append(contours)
+        area_sets.append(areas)
+        perim_sets.append(perims)
+    return contour_sets, area_sets, perim_sets
+
+def extract_area_growth_rate(area_series, time_series):
+    """
+    Returns growth rate by total area for each time step. Entries adjacent to NaN will be left as NaN.
+    """
+    gro_series = []
+    index_list = np.arange(len(area_series))
+    for i in index_list:
+        if i == 0:
+            rate = (area_series[1] - area_series[0])/(time_series[1]-time_series[0])
+        elif i == index_list[-1]:
+            rate = (area_series[-1] - area_series[-2])/(time_series[-1]-time_series[-2])
+        else:
+            rate = (area_series[i+1] - area_series[i-1])/(time_series[i+1]-time_series[i-1])
+        gro_series.append(rate)
+    return gro_series
