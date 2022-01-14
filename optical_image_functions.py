@@ -63,7 +63,7 @@ def get_timestamps(fpaths):
         t = diff.total_seconds()
         # append result
         ts.append(t)
-    return ts
+    return np.array(ts)
 
 def extract_continuous_ts(ts):
     """Returns time series cut down to first continuous chunk"""
