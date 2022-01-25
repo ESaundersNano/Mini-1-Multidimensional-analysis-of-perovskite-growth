@@ -73,6 +73,7 @@ def extract_continuous_ts(ts):
     for t in ts:
         diff1= t - tlast
         if diff1 > 10*diff0: # Truncate series if the time step is larger than the original time step by a factor of 10
+            print("Discontinuous time series, data truncated")
             return ts[:i]
         i+=1
         tlast=t
