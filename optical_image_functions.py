@@ -10,6 +10,7 @@ import warnings
 warnings.filterwarnings("ignore")         # Attempt to remove some unnecessary pyplot warnings
 from scipy.optimize import curve_fit
 import pandas as pd
+from pathlib import Path
 
 def get_filepaths(folder):
     # Automatically get all filepaths in example folder in a sorted list
@@ -254,6 +255,27 @@ def fit_speed_linear(position_array, time_array, whole_series=True, time_start=0
     [a, b] = params[0]
     return a
 
+def fit_speed_linear_standard_dev(position_array, time_array, whole_series=True, time_start=0, time_end=0):
+    """
+    Function used to extract standard deviation of gradient estimates for plots. Can make whole_series=False and set a time interval of interest if want to look at a subset of data but
+    don't want to work out what slices to pass as array arguments.
+    """
+    def fit_func(x, a, b):
+        return a*x + b
+    def getnearpos(array,value):
+        idx = np.argmin((np.abs(array-value)))
+        return idx   
+    if whole_series == True:
+        y=position_array
+        x=time_array
+    else:
+        i_start=getnearpos(time_array,time_start)
+        i_end=getnearpos(time_array,time_end)
+        y=position_array[i_start:i_end]
+        x=time_array[i_start:i_end]
+    params = curve_fit(fit_func, x, y)
+    return np.sqrt(params[1][0][0])
+
 def rotate_image(im, angle):
     """
     Returns an image roated about its centre by a specified angle in degrees.
@@ -261,9 +283,9 @@ def rotate_image(im, angle):
     Warning, if rotate before taking sobel filter of image, the black corners of no data will stand out very brightly from the sobel.
     """
     row, col = im.shape
-    image_centre = tuple(np.array([row, col])/2)
+    image_centre = tuple(np.array([col, row])/2)
     rot_mat = cv2.getRotationMatrix2D(image_centre, angle, 1.0)
-    result = cv2.warpAffine(im, rot_mat, (col, row), flags=cv2.INTER_LINEAR) # warpAffine takes shape tuple in reverse order to standard
+    result = cv2.warpAffine(im, rot_mat, (col, row), flags=cv2.INTER_LINEAR)
     return result
 
 
@@ -395,12 +417,14 @@ def extract_line_data(line_points, image, crop_pixel_width =50, auto_align=False
     
     if auto_align==True:
         alignment_angle=find_alignment(cropped, 0.1)
-        cropped=rotate_image(cropped, alignment_angle)
+    
+    cropped=rotate_image(cropped, alignment_angle)
     
     return onedimify(cropped), alignment_angle
 
 def extract_facet_positions(line_points, outline_images, pixel_size, automatic_alignment=True, crop_window_width =50):
     """
+    Returns facet positions and error arrays.
     Finds the position of a facet by finding the maximum signal in a 1D signal formed from a cropped portion of the images.
     Must pass images with edges highlighted as strength of signal at edges is used to track their position. 
     Position sign convention is based on the direction set by the line points.
@@ -423,16 +447,40 @@ def extract_facet_positions(line_points, outline_images, pixel_size, automatic_a
     one_dim_facet, angle_adjustment = extract_line_data(line_points=rotated_line_points, image=rotated_image, crop_pixel_width=crop_window_width, auto_align=True)
     
     positions =[]
+    error = []
     for outline in outline_images:
         rotated_image = rotate_image(outline, angle)
         onedim_facet, _ = extract_line_data(line_points=rotated_line_points, image=rotated_image, crop_pixel_width=crop_window_width, auto_align=False, alignment_angle=angle_adjustment)
         # Find position of facet in onedim
-        position = onedim_facet.index(np.max(onedim_facet)) # just using maximum for now
+        max_signal = np.max(onedim_facet)
+        position = onedim_facet.index(max_signal) # just using maximum for now
         positions.append(position)
+        
+        # Find error by half width at half maximum
+        HM = max_signal/2
+        F1 = 0
+        F2 = 0
+        for i in np.arange(len(onedim_facet[position:])):
+            if onedim_facet[position:][i]<HM:
+                F2 = i
+                break
+        flipped = np.flip(onedim_facet[:position+1])
+        for i in np.arange(len(flipped)):
+            if flipped[i]<HM:
+                F1 = i
+                break
+        FWHM = F1 + F2
+        HWHM = FWHM/2
+        error.append(HWHM)
+        
+        
     positions = np.array(positions)
     positions -= positions[0]
-    positions = [-pixel_size*pixel_position for pixel_position in positions]
-    return positions
+    positions = pixel_size*positions
+    positions = abs(positions)
+    error = np.array(error)
+    error = pixel_size*error
+    return positions, error
 
 """Functions that are in notebooks which are useful but need to be tailored to each data set."""
 
