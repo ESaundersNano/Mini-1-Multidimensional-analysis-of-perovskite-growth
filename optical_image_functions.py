@@ -440,7 +440,7 @@ def extract_facet_positions(line_points, outline_images, pixel_size, automatic_a
     - Change facet location to be more sophisticated, perhaps using peak finder to smooth out errors and handle multiple facets in one line.
     - Check for sudden jumps in position caused by facet growing out of view of crop or new facet growing in.
     - Better integration with point selection, add a check to see if line points will be rotated out of view. 
-    - Investigate why sometimes facets are just predicted to have not moved at all when clearly they do dep
+    - Investigate why sometimes facets are just predicted to have not moved at all when clearly they do depending on cross section chosne.
     """
     first_image=outline_images[0]
     
