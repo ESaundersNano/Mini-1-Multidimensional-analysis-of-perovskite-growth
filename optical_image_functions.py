@@ -10,7 +10,6 @@ import warnings
 warnings.filterwarnings("ignore")         # Attempt to remove some unnecessary pyplot warnings
 from scipy.optimize import curve_fit
 import pandas as pd
-from pathlib import Path
 
 def get_filepaths(folder):
     # Automatically get all filepaths in example folder in a sorted list
@@ -233,7 +232,7 @@ def extract_area_growth_rate(area_series, time_series):
         gro_series.append(rate)
     return gro_series
 
-def fit_speed_linear(position_array, time_array, whole_series=True, time_start=0, time_end=0):
+def fit_speed_linear(position_array, time_array, whole_series=True, time_start=0, time_end=0, return_intercept = False):
     """
     Function used to fit gradients. Can make whole_series=False and set a time interval of interest if want to look at a subset of data but
     don't want to work out what slices to pass as array arguments.
@@ -253,7 +252,10 @@ def fit_speed_linear(position_array, time_array, whole_series=True, time_start=0
         x=time_array[i_start:i_end]
     params = curve_fit(fit_func, x, y)
     [a, b] = params[0]
-    return a
+    if return_intercept == True:
+        return a, b
+    else:
+        return a
 
 def fit_speed_linear_standard_dev(position_array, time_array, whole_series=True, time_start=0, time_end=0):
     """
@@ -283,9 +285,9 @@ def rotate_image(im, angle):
     Warning, if rotate before taking sobel filter of image, the black corners of no data will stand out very brightly from the sobel.
     """
     row, col = im.shape
-    image_centre = tuple(np.array([col, row])/2)
+    image_centre = tuple(np.array([row, col])/2)
     rot_mat = cv2.getRotationMatrix2D(image_centre, angle, 1.0)
-    result = cv2.warpAffine(im, rot_mat, (col, row), flags=cv2.INTER_LINEAR)
+    result = cv2.warpAffine(im, rot_mat, (col, row), flags=cv2.INTER_LINEAR) # warpAffine takes shape tuple in reverse order to standard
     return result
 
 

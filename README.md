@@ -1,4 +1,4 @@
 # Crystal-Growth
- Python scripts for exploring optical microscopy data - to be generalised for hyperspectral data
+ Python scripts for exploring optical and hyperspectral microscopy data.
 
 Need modules in local environment found in Environment folder
