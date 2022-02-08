@@ -1,3 +1,15 @@
+"""
+The following code was developed by:
+
+Edward Saunders, es758@cam.ac.uk
+George Lewis, grl31@cam.ac.uk
+
+This file contains the basic functions for growth rate extraction from 2D optical and hyperspectral data sets.
+The code was developed for the NanoDTC mini 1 project "A multidimensional investigation into the growth conditions of halide perovskites".
+
+08/02/2022
+"""
+
 import hyperspy.api as hs                 # hyperspectral data processing and some useful image viewing
 import h5py                               # to handle .h5 files
 from matplotlib import pyplot as plt      # Plotting
